@@ -1,0 +1,11 @@
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "Unnamed: 0", "col2": "등급.4", "score": 0.9999999999999998, "method": "Cramér's V"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "등급.1", "col2": "24시간", "score": 0.4938463609153449, "method": "Eta Squared"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "Unnamed: 0", "col2": "등급.1", "score": 1.0, "method": "Cramér's V"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "Unnamed: 0", "col2": "등급.3", "score": 0.9999999999999999, "method": "Cramér's V"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "24시간", "col2": "1시간.2", "score": 0.3304677348212082, "method": "Pearson"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "등급.3", "col2": "1시간", "score": 0.593831881646353, "method": "Eta Squared"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "24시간", "col2": "1시간.3", "score": 0.4607709698536421, "method": "Pearson"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "1시간", "col2": "1시간.2", "score": -0.43160219099784014, "method": "Pearson"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "1시간", "col2": "1시간.3", "score": 0.4521751332310878, "method": "Pearson"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "1시간.1", "col2": "1시간.2", "score": 0.5960557937411319, "method": "Pearson"}
+{"type": "internal", "file": "analyzer/uploads\\대기.xlsx", "col1": "1시간", "col2": "1시간.1", "score": -0.5097513247384413, "method": "Pearson"}
