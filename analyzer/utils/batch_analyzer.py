@@ -24,13 +24,33 @@ def read_dataframe_safely(path):
         if ext == ".csv":
             chunks = pd.read_csv(path, chunksize=10000)
             return pd.concat(chunks, ignore_index=True)
+
         elif ext == ".xlsx":
-            return pd.read_excel(path, engine="openpyxl", header=5, skiprows=[6])
+            # ✅ 1. 헤더 자동 탐지
+            preview = pd.read_excel(path, engine="openpyxl", header=None, nrows=15)
+            for i in range(15):
+                row = preview.iloc[i]
+                text_row = row.astype(str).str.lower().fillna("")
+                if text_row.str.contains("date|날짜|시간|일시|측정일").any():
+                    header_row = i
+                    break
+            else:
+                header_row = 0
+
+            # ✅ 2. 날짜 컬럼 미리 감지
+            preview_named = pd.read_excel(path, engine="openpyxl", header=header_row, nrows=1)
+            date_cols = [col for col in preview_named.columns if any(kw in str(col).lower() for kw in ["date", "time", "날짜", "일시", "측정일"])]
+
+            # ✅ 3. 최종 읽기
+            return pd.read_excel(path, engine="openpyxl", header=header_row, parse_dates=date_cols)
+
         else:
             raise ValueError(f"지원하지 않는 파일 형식: {ext}")
+
     except Exception as e:
         print(f"❌ 파일 읽기 실패: {path} → {e}")
         return pd.DataFrame()
+
 
 
 

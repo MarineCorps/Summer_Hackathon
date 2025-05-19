@@ -8,33 +8,66 @@ import numpy as np
 from utils.analysis_runner import analyze_csv_pair, analyze_internal_columns
 from utils.gpt_analysis import analyze_with_gpt
 from utils.batch_analyzer import analyze_all_columns
+from utils.timeseries_detect import analyze_timeseries  # ✅ 시계열 분석 모듈 추가
 
 app = Flask(__name__, template_folder='templates')
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB 제한
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 최대 업로드 크기 제한 (10MB)
 
 UPLOAD_FOLDER = 'analyzer/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ✅ 공통 파일 로딩 함수 (.csv / .xlsx 지원)
+# ✅ 업로드된 파일을 Pandas DataFrame으로 읽기 (CSV / XLSX 지원)
 def read_uploaded_file(path):
     ext = os.path.splitext(path)[1].lower()
     try:
         if ext == ".csv":
             return pd.read_csv(path, encoding='utf-8')
+
         elif ext == ".xlsx":
-            return pd.read_excel(path, engine="openpyxl", header=5, skiprows=[6])
+            header_row = auto_detect_excel_header(path)
+            print(f"📌 [엑셀] 헤더 자동 감지 결과: {header_row}행")
+
+            # 1차 스캔: 날짜 컬럼 추정
+            preview = pd.read_excel(path, engine="openpyxl", header=header_row, nrows=1)
+            date_cols = [col for col in preview.columns if any(kw in str(col).lower() for kw in ["date", "time", "날짜", "일시", "측정일"])]
+
+            # 실제 읽기 (날짜 컬럼 지정)
+            return pd.read_excel(path, engine="openpyxl", header=header_row, parse_dates=date_cols)
+
         else:
             raise ValueError(f"지원하지 않는 파일 형식입니다: {ext}")
+
     except Exception as e:
         print(f"❌ 파일 읽기 실패: {path} → {e}")
         return pd.DataFrame()
 
+
+# ✅ 자동 헤더 탐지 함수 (엑셀용)
+def auto_detect_excel_header(path, max_rows=15):
+    """
+    엑셀 파일에서 '날짜', '시간', '측정일시' 등의 키워드가 포함된 행을 헤더로 자동 추정
+    """
+    try:
+        preview = pd.read_excel(path, engine="openpyxl", header=None, nrows=max_rows)
+
+        for i in range(max_rows):
+            row = preview.iloc[i]
+            text_row = row.astype(str).str.lower().fillna("")
+            if text_row.str.contains("date|날짜|시간|일시|측정일").any():
+                return i
+
+    except Exception as e:
+        print(f"⚠️ 헤더 자동 탐지 실패: {e}")
+
+    return 0  # 실패하면 첫 번째 행을 기본 헤더로 사용
+
+# ✅ 메인 페이지 라우팅
 @app.route('/')
 def home():
     return render_template("index.html")
 
 
-# ✅ 1. 단일 비교 분석
+# ✅ 1. 단일 비교 분석 (file1 vs file2)
 @app.route('/analyze', methods=['POST'])
 def analyze():
     try:
@@ -77,7 +110,7 @@ def analyze():
         return jsonify({"error": "서버 내부 오류 발생", "detail": str(e)}), 500
 
 
-# ✅ 2. 다중 분석 실행 (멀티스레드 + 저장)
+# ✅ 2. 전체 분석 실행 (파일 여러 개 → 상관관계 or 시계열 분석)
 @app.route('/analyze-all', methods=['POST'])
 def analyze_all():
     try:
@@ -92,6 +125,27 @@ def analyze_all():
         if not paths:
             return jsonify({"error": "업로드된 파일이 없습니다."}), 400
 
+        # ✅ 분석 유형 분기 처리
+        analysis_type = request.form.get("analysis_type", "correlation")
+
+        # ✅ [시계열 분석] 다중 파일 대응
+        if analysis_type == "timeseries":
+            results = {}
+
+            for path in paths:
+                filename = os.path.basename(path)
+                df = read_uploaded_file(path)
+                ts_result = analyze_timeseries(df)
+
+                if not ts_result or "error" in ts_result:
+                    results[filename] = {"error": ts_result.get("error", "분석 실패")}
+                    continue
+
+                results[filename] = ts_result
+
+            return jsonify(results)
+
+        # ✅ [상관관계 분석] 기존 방식 유지
         results = []
         result_path = os.path.join(UPLOAD_FOLDER, 'result.jsonl')
         with open(result_path, 'w', encoding='utf-8') as f_out:
@@ -100,8 +154,6 @@ def analyze_all():
                 results.append(r)
 
         results.sort(key=lambda x: abs(x.get("score", 0)), reverse=True)
-
-        print("✅ [analyze-all] 분석 결과 수:", len(results))
         df_first = read_uploaded_file(paths[0])
 
         response = {
@@ -121,8 +173,7 @@ def analyze_all():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-
-# ✅ 시각화용 필드 추가
+# ✅ 3. 시각화용 필드 자동 생성 (line, box, bubble, radar, pie 등)
 def enrich_response_with_visual_data(df, result: dict):
     try:
         if df.empty:
@@ -132,6 +183,7 @@ def enrich_response_with_visual_data(df, result: dict):
         print("🔍 [enrich] 시각화 컬럼:", df.columns.tolist())
         num_cols = df.select_dtypes(include='number').columns[:3]
 
+        # ✅ 선형 차트용 (시계열)
         if 'Date' in df.columns and len(num_cols) > 0:
             x_vals = df['Date'].astype(str).tolist()
             y_vals = df[num_cols[0]].dropna().tolist()
@@ -143,12 +195,14 @@ def enrich_response_with_visual_data(df, result: dict):
                     "yLabel": num_cols[0]
                 }
 
+        # ✅ 박스플롯용
         if len(num_cols) >= 1:
             result["box_data"] = {
                 "labels": list(num_cols),
                 "dataList": [df[col].dropna().tolist() for col in num_cols]
             }
 
+        # ✅ 버블 / 레이더
         if len(num_cols) >= 3:
             raw_data = df[num_cols].dropna().to_numpy()
             scaler = MinMaxScaler()
@@ -169,6 +223,7 @@ def enrich_response_with_visual_data(df, result: dict):
                 "names": [f"Sample {i+1}" for i in range(len(radar_sample))]
             }
 
+        # ✅ 도넛차트용 (범주형)
         cat_cols = df.select_dtypes(include='object').columns
         if len(cat_cols) > 0:
             top_cat = cat_cols[0]
@@ -182,7 +237,7 @@ def enrich_response_with_visual_data(df, result: dict):
         print("❌ [enrich] 시각화 데이터 생성 실패:", e)
 
 
-# ✅ 4. 산점도 요청
+# ✅ 4. 산점도 분석용 API (col1 vs col2)
 @app.route('/scatter-data', methods=['GET'])
 def scatter_data():
     try:
@@ -227,7 +282,7 @@ def scatter_data():
         return jsonify({"error": "서버 오류", "detail": str(e)}), 500
 
 
-# ✅ 5. 저장된 결과 불러오기
+# ✅ 5. 저장된 분석 결과 불러오기 (result.jsonl → 시각화용)
 @app.route('/get-results', methods=['GET'])
 def get_results():
     try:

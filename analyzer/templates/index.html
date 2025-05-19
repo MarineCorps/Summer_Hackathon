@@ -8,14 +8,13 @@
 </head>
 <body>
 
-<h1>📊 CSV 상관관계 분석기</h1>
+<h1>📊 데이터 분석기</h1>
 
-<!-- ✅ 파일 업로드 -->
+<!-- ✅ 파일 업로드 및 분석 옵션 -->
 <form id="uploadForm">
   <div>
-    <label>📦 여러 CSV 파일 선택:</label><br>
+    <label>📦 여러 CSV 또는 Excel 파일 선택:</label><br>
     <input type="file" id="multiFiles" name="files" multiple accept=".csv,.xlsx" />
-
   </div>
 
   <div style="margin-top: 10px;">
@@ -27,10 +26,28 @@
     <input type="text" name="gpt_api_key" id="gptKey" style="width: 100%;" />
   </div>
 
-  <button id="analyzeAllBtn" type="button">📡 전체 분석 실행</button>
-</form>
+  <div style="margin-top: 10px;">
+    <label>🔍 분석 유형 선택:</label><br>
+    <select id="analysisType" name="analysis_type">
+      <option value="correlation">📊 상관관계 분석</option>
+      <option value="timeseries">📈 시계열 분석</option>
+    </select>
+  </div>
 
-<pre id="analyzeAllResult" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin-top: 10px;"></pre>
+  <div style="margin-top: 10px;">
+    <label>🧬 분석할 컬럼명 (쉼표로 구분, 선택사항):</label><br>
+    <input type="text" id="columnInput" name="columns" placeholder="예: PM10, PM2.5" style="width: 100%;" />
+  </div>
+
+  <div style="margin-top: 10px;">
+    <label>🕒 날짜 컬럼명 (예: 날짜, 일시 등):</label><br>
+    <input type="text" id="timeColumnInput" name="time_column" placeholder="예: 날짜" style="width: 100%;" />
+  </div>
+
+  <div style="margin-top: 10px;">
+    <button id="analyzeAllBtn" type="button">📡 전체 분석 실행</button>
+  </div>
+</form>
 
 <!-- 🎨 색상 테마 -->
 <div style="margin-top: 20px;">
@@ -68,7 +85,29 @@
   </div>
 
   <div id="heatmap" class="tab-content"><div id="chartHeatmap" class="chart-container"></div></div>
-  <div id="line" class="tab-content"><div id="chartLine" class="chart-container"></div></div>
+
+  <!-- line 차트 탭 내부 -->
+<div id="line" class="tab-content">
+  <div style="margin-bottom: 10px;">
+    <label for="lineViewSelect">📊 보기 방식:</label>
+    <select id="lineViewSelect">
+      <option value="daily">일별 평균</option>
+      <option value="monthly">월별 평균</option>
+      <option value="hourly">하루 평균</option>
+      <!--날짜 범위 선택 가능하게 조정-->
+    </select>
+  </div>
+
+  <div id="hourlyDateWrapper" style="display: none; margin-bottom: 10px;">
+    <label for="hourlyDateSelect">📅 분석할 날짜 선택:</label>
+    <select id="hourlyDateSelect"></select>
+  </div>
+
+  <div id="chartLine" class="chart-container"></div>
+</div>
+
+
+
   <div id="box" class="tab-content"><div id="chartBox" class="chart-container"></div></div>
 
   <div id="bubble" class="tab-content">
@@ -86,32 +125,30 @@
   <div id="pie" class="tab-content"><div id="chartPie" class="chart-container"></div></div>
 </div>
 
-<!-- ✅ 버튼 영역 -->
-<button id="loadAllResultsBtn">📂 전체 분석 결과 불러오기</button>
-
-<!-- ✅ GPT 요약 -->
+<!-- 🧠 GPT 요약 -->
 <h3>🧠 GPT 요약</h3>
 <textarea id="gptSummary" readonly placeholder="GPT 요약이 여기에 표시됩니다."></textarea>
 
-<!-- ✅ JSON 토글 및 결과 -->
+<!-- 📂 전체 결과 -->
 <button class="toggle-btn" onclick="toggleJson()">📂 전체 결과 보기/숨기기</button>
 <pre id="resultBox" style="display: none;">결과 없음</pre>
 
-<!-- ✅ 스크립트 연결 -->
+<!-- ✅ 스크립트 모듈 연결 -->
 <script type="module" src="{{ url_for('static', filename='frontend/script.js') }}"></script>
 
 <!-- ✅ 툴팁 설정 (수정 금지) -->
 <script>
   const descriptions = {
-    bar: `📊 막대그래프\n- 항목별 값을 비교할 때 사용해요.\n- 막대가 길수록 값이 크다는 의미예요.\n예) 과목별 점수, 제품 판매량 등을 한눈에 보기 좋아요.`,
-    scatter: `🔵 산점도 (Scatter Plot)\n- 두 변수 사이의 관계를 점으로 보여줘요.\n- 오른쪽 위로 퍼지면 양의 관계, 반대면 음의 관계예요.\n예) 공부 시간과 점수의 관계를 알고 싶을 때 좋아요.`,
-    heatmap: `🔥 히트맵 (Heatmap)\n- 값이 클수록 색이 진해져요.\n- 열의 강도, 상관관계 등을 시각적으로 비교할 때 사용해요.\n예) 변수 간 상관관계를 한눈에 보고 싶을 때 좋아요.`,
-    line: `📈 꺾은선 그래프 (Line Chart)\n- 시간에 따라 값이 어떻게 변하는지를 보여줘요.\n- 점을 선으로 이어서 추세를 쉽게 볼 수 있어요.\n예) 날짜별 방문자 수, 매출 변화 등.`,
-    box: `📦 박스플롯 (Box Plot)\n- 점수가 어떤 구간에 몰려 있는지, 특이한 값(이상치)이 있는지를 보여줘요.\n- 상자는 중간 50% 범위, 가운데 선은 중앙값이에요.\n- 작은 동그라미는 평균에서 멀리 벗어난 이상치예요.\n예) 시험 점수 분포, 연봉 데이터 분석에 좋아요.`,
-    bubble: `🟠 버블차트 (Bubble Chart)\n- 산점도에 '버블 크기'를 더한 그래프예요.\n- 가로축: A 값, 세로축: B 값, 크기: 영향력 등 세 번째 요소예요.\n예) A/B 점수 관계 + 중요도를 함께 보고 싶을 때.`,
-    radar: `🕸️ 레이더차트 (Radar Chart)\n- 여러 항목(A, B, C...)을 한눈에 비교할 수 있어요.\n- 꼭짓점이 멀수록 점수가 높은 거고, 모양이 둥글면 고르게 높다는 뜻이에요.\n예) 피트니스 능력 평가, 학생 역량 비교.`,
-    pie: `🍩 도넛차트 (Donut Chart)\n- 전체 중에서 각 항목이 몇 %를 차지하는지 보여줘요.\n- 원형 그래프랑 비슷한데 가운데가 비어 있어요.\n예) 사용자 비율, 카테고리 분포 등을 직관적으로 볼 때 좋아요.`
-  };
+  bar: `📊 막대그래프\n- 항목별 값을 비교할 때 사용해요.\n- 막대가 길수록 값이 크다는 의미예요.\n예) 과목별 점수, 제품 판매량 등을 한눈에 보기 좋아요.`,
+  scatter: `🔵 산점도 (Scatter Plot)\n- 두 변수 사이의 관계를 점으로 보여줘요.\n- 오른쪽 위로 퍼지면 양의 관계, 반대면 음의 관계예요.\n예) 공부 시간과 점수의 관계를 알고 싶을 때 좋아요.`,
+  heatmap: `🔥 히트맵 (Heatmap)\n- 값이 클수록 색이 진해져요.\n- 열의 강도, 상관관계 등을 시각적으로 비교할 때 사용해요.\n예) 변수 간 상관관계를 한눈에 보고 싶을 때 좋아요.`,
+  line: `📈 꺾은선 그래프 (Line Chart)\n- 시간에 따라 값이 어떻게 변하는지를 보여줘요.\n- 점을 선으로 이어서 추세를 쉽게 볼 수 있어요.\n예) 날짜별 방문자 수, 매출 변화 등.`,
+  box: `📦 박스플롯 (Box Plot)\n- 점수가 어떤 구간에 몰려 있는지, 특이한 값(이상치)이 있는지를 보여줘요.\n- 상자는 중간 50% 범위, 가운데 선은 중앙값이에요.\n- 작은 동그라미는 평균에서 멀리 벗어난 이상치예요.\n예) 시험 점수 분포, 연봉 데이터 분석에 좋아요.`,
+  bubble: `🟠 버블차트 (Bubble Chart)\n- 산점도에 '버블 크기'를 더한 그래프예요.\n- 가로축: A 값, 세로축: B 값, 크기: 영향력 등 세 번째 요소예요.\n예) A/B 점수 관계 + 중요도를 함께 보고 싶을 때.`,
+  radar: `🕸️ 레이더차트 (Radar Chart)\n- 여러 항목(A, B, C...)을 한눈에 비교할 수 있어요.\n- 꼭짓점이 멀수록 점수가 높은 거고, 모양이 둥글면 고르게 높다는 뜻이에요.\n예) 피트니스 능력 평가, 학생 역량 비교.`,
+  pie: `🍩 도넛차트 (Donut Chart)\n- 전체 중에서 각 항목이 몇 %를 차지하는지 보여줘요.\n- 원형 그래프랑 비슷한데 가운데가 비어 있어요.\n예) 사용자 비율, 카테고리 분포 등을 직관적으로 볼 때 좋아요.`
+};
+
 
   Object.entries(descriptions).forEach(([key, desc]) => {
     const el = document.getElementById(key + 'Tip');

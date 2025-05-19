@@ -121,32 +121,51 @@ export function drawHeatmapChart(domId, results) {
 
 // ✅ 4. 꺾은선 차트 (Line)
 export function drawLineChart(domId, xVals, yVals, xLabel, yLabel, theme = 'accessibility') {
+  // ✅ 유효성 검사
   if (!xVals?.length || !yVals?.length || xVals.length !== yVals.length) return;
+
   const chart = getChart(domId);
   if (!chart) return;
 
   const color = getColorPalette(theme)[0];
 
   chart.setOption({
-    title: { text: `${xLabel} 에 따른 ${yLabel}` },
+    title: {
+      text: `${xLabel} 에 따른 ${yLabel}`,
+      left: 'center'
+    },
+    tooltip: { trigger: 'axis' },
     xAxis: {
       type: 'category',
+      data: xVals, // ✅ 수정된 부분
       name: xLabel,
-      data: xVals,
-      axisLabel: { rotate: 45 }
+      axisLabel: {
+        rotate: 45,
+        interval: 'auto',
+        overflow: 'truncate',
+        formatter: function (value) {
+          return value.length > 16 ? value.slice(0, 16) + '…' : value;
+        }
+      }
     },
     yAxis: {
       type: 'value',
       name: yLabel,
-      axisLabel: { formatter: (v) => v.toLocaleString() }
+      axisLabel: {
+        formatter: (v) => v.toLocaleString()
+      }
     },
-    tooltip: { trigger: 'axis' },
     series: [{
       type: 'line',
-      data: yVals,
-      lineStyle: { color: color },
-      itemStyle: { color: color }
-    }]
+      data: yVals, // ✅ 그대로 유지
+      smooth: true,
+      symbolSize: 6,
+      lineStyle: { width: 2, color: color },
+      itemStyle: { color: color },
+      name: yLabel
+    }],
+    color: [color],
+    backgroundColor: 'transparent'
   });
 }
 
