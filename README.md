@@ -2,16 +2,22 @@
 
 <!-- logo -->
 
+<div align="center">
+  <h1>📊 데이터 분석기 (Summer Hackathon)</h1>
+  <p>Python 기반 Flask 서버와 HTML/CSS/JS 프론트엔드로 구현된 파일 기반 자동 데이터 분석 웹 애플리케이션</p>
 
-# Hackathon Data Analyzer 
-
-[<img src="https://img.shields.io/badge/-readme.md-important?style=flat&logo=google-chrome&logoColor=white" />]() [<img src="https://img.shields.io/badge/-tech blog-blue?style=flat&logo=google-chrome&logoColor=white" />]() [<img src="https://img.shields.io/badge/release-v0.1.0-yellow?style=flat&logo=google-chrome&logoColor=white" />]() <br/> [<img src="https://img.shields.io/badge/프로젝트 기간-2025.05~2025.06-green?style=flat&logo=&logoColor=white" />]()
-
+  [<img src="https://img.shields.io/badge/-readme.md-important?style=flat&logo=google-chrome&logoColor=white" />]()
+  [<img src="https://img.shields.io/badge/프로젝트 기간-2025.05~2025.06-green?style=flat&logo=&logoColor=white" />]()
+  <br>
+  <img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Flask-000000?style=flat&logo=flask&logoColor=white" />
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white" />
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white" />
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black" />
 </div>
 
-# 📊 데이터 분석기 (Hackathon Demo)
-
-> CSV/Excel 파일 기반 시계열 및 상관관계 분석 자동화 도구. 시각화 + 요약 기능을 포함한 웹 기반 서비스입니다.
+</div>
+CSV/Excel 파일 기반 시계열 및 상관관계 분석 자동화 도구. 시각화 + 요약 기능을 포함한 웹 기반 서비스입니다.
 
 ---
 
